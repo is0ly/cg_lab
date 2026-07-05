@@ -1,40 +1,56 @@
-use crate::input::Input;
+use std::{sync::Arc, time::Duration};
+
+use winit::{
+    dpi::PhysicalSize,
+    event::WindowEvent,
+    event_loop::OwnedDisplayHandle,
+    keyboard::KeyCode,
+    window::{Window, WindowId},
+};
+
 use crate::{
     draw::DrawList,
+    input::Input,
     math::{Vec2, Viewport},
     renderer::Renderer,
-    sketch::Sketch,
+    sketch::{Sketch, SketchDrawContext, SketchInitContext, SketchUpdateContext},
     time::Time,
     AppConfig,
 };
-use std::sync::Arc;
-use std::time::Duration;
-use winit::{
-    dpi::PhysicalSize, event::WindowEvent, event_loop::OwnedDisplayHandle, keyboard::KeyCode,
-    window::Window, window::WindowId,
-};
 
-pub struct Engine {
+pub struct Engine<S: Sketch> {
     renderer: Renderer,
-    sketch: Sketch,
+    sketch: S,
     time: Time,
-    viewport: Viewport,
     input: Input,
+    canvas_size: Vec2,
+    viewport: Viewport,
     paused: bool,
 }
 
-impl Engine {
+impl<S> Engine<S>
+where
+    S: Sketch,
+{
     pub async fn new(display: OwnedDisplayHandle, window: Arc<Window>, config: AppConfig) -> Self {
         let mut renderer = Renderer::new(display, window).await;
 
         let canvas_size = Vec2::new(f32::from(config.width), f32::from(config.height));
-        let sketch = Sketch::new(canvas_size);
-
-        let time = Time::new(Duration::from_secs_f32(1.0 / 60.0));
         let viewport = Viewport::new(canvas_size.x, canvas_size.y);
 
+        let init_ctx = SketchInitContext { canvas_size };
+        let sketch = S::new(&init_ctx);
+
+        let time = Time::new(Duration::from_secs_f32(1.0 / 60.0));
+        let input = Input::new();
+
         let mut draw = DrawList::new(viewport);
-        sketch.draw(&mut draw);
+        let draw_ctx = SketchDrawContext {
+            canvas_size,
+            input: &input,
+        };
+
+        sketch.draw(&mut draw, &draw_ctx);
 
         let mesh = draw.into_colored_mesh();
         renderer.upload_colored_mesh(&mesh);
@@ -43,11 +59,13 @@ impl Engine {
             renderer,
             sketch,
             time,
+            input,
+            canvas_size,
             viewport,
-            input: Input::new(),
             paused: false,
         }
     }
+
     pub fn window_id(&self) -> WindowId {
         self.renderer.window_id()
     }
@@ -79,13 +97,25 @@ impl Engine {
             self.time.clear_accumulator();
         } else {
             while self.time.should_run_fixed_update() {
-                self.sketch.fixed_update(self.time.fixed_delta());
+                let update_ctx = SketchUpdateContext {
+                    fixed_delta: self.time.fixed_delta(),
+                    canvas_size: self.canvas_size,
+                    input: &self.input,
+                };
+
+                self.sketch.fixed_update(&update_ctx);
                 self.time.consume_fixed_update();
             }
         }
 
         let mut draw = DrawList::new(self.viewport);
-        self.sketch.draw(&mut draw);
+
+        let draw_ctx = SketchDrawContext {
+            canvas_size: self.canvas_size,
+            input: &self.input,
+        };
+
+        self.sketch.draw(&mut draw, &draw_ctx);
 
         let mesh = draw.into_colored_mesh();
         self.renderer.upload_colored_mesh(&mesh);

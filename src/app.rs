@@ -1,38 +1,43 @@
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
-use crate::engine::Engine;
-use crate::AppConfig;
+use crate::{app, engine::Engine, sketch::Sketch, AppConfig};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::ElementState,
-    event::WindowEvent,
+    event::{ElementState, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowId},
 };
 
-struct App {
-    engine: Option<Engine>,
-
+struct App<S: Sketch> {
+    engine: Option<Engine<S>>,
     config: AppConfig,
+    _sketch: PhantomData<S>,
 }
 
-pub fn run(config: AppConfig) {
+pub fn run<S>(config: AppConfig)
+where
+    S: Sketch + 'static,
+{
     env_logger::init();
 
     let event_loop = EventLoop::new().expect("Failed to create event loop");
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut app = App {
+    let mut app: app::App<S> = App {
         engine: None,
         config,
+        _sketch: PhantomData,
     };
 
     event_loop.run_app(&mut app).expect("Failed to run app");
 }
 
-impl ApplicationHandler for App {
+impl<S> ApplicationHandler for App<S>
+where
+    S: Sketch + 'static,
+{
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.engine.is_some() {
             return;
@@ -51,7 +56,7 @@ impl ApplicationHandler for App {
                 .expect("Failed to create window"),
         );
 
-        let engine = pollster::block_on(Engine::new(
+        let engine = pollster::block_on(Engine::<S>::new(
             event_loop.owned_display_handle(),
             window.clone(),
             self.config.clone(),
