@@ -39,7 +39,7 @@ where
         let viewport = Viewport::new(canvas_size.x, canvas_size.y);
 
         let init_ctx = SketchInitContext { canvas_size };
-        let sketch = S::new(&init_ctx);
+        let mut sketch = S::new(&init_ctx);
 
         let time = Time::new(Duration::from_secs_f32(1.0 / 60.0));
         let input = Input::new();

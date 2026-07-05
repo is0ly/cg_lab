@@ -24,5 +24,5 @@ pub trait Sketch {
 
     fn fixed_update(&mut self, ctx: &SketchUpdateContext);
 
-    fn draw(&self, draw: &mut DrawList, ctx: &SketchDrawContext);
+    fn draw(&mut self, draw: &mut DrawList, ctx: &SketchDrawContext);
 }
