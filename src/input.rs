@@ -43,6 +43,11 @@ impl Input {
         self.keys_pressed.contains(&key_code)
     }
 
+    #[must_use]
+    pub fn key_down(&self, key_code: KeyCode) -> bool {
+        self.keys_down.contains(&key_code)
+    }
+
     pub fn end_frame(&mut self) {
         self.keys_pressed.clear();
     }
