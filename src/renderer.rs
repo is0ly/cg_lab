@@ -225,6 +225,10 @@ impl Renderer {
         self.canvas_initialized = false;
     }
 
+    pub fn size(&self) -> PhysicalSize<u32> {
+        self.size
+    }
+
     pub fn upload_colored_mesh(&mut self, mesh: &ColoredMesh) {
         if mesh.index_count() == 0 {
             self.vertex_buffer = None;

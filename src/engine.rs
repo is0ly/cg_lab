@@ -76,10 +76,14 @@ where
 
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
         self.renderer.resize(size);
+        self.input
+            .update_mouse_canvas_position(self.renderer.size(), self.canvas_size);
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
         self.input.handle_window_event(event);
+        self.input
+            .update_mouse_canvas_position(self.renderer.size(), self.canvas_size);
     }
 
     pub fn frame(&mut self) {
